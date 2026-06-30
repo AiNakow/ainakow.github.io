@@ -19,8 +19,9 @@
   .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; }
   .card h2 { font-size: 15px; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .grid > * { min-width: 0; } /* 关键：解除 grid item 默认 min-width:auto，避免 date input 固有最小宽度撑爆轨道（手机端溢出根因） */
   label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-  input[type=number], input[type=text], input[type=date], textarea, select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-family: inherit; background: #fff; }
+  input[type=number], input[type=text], input[type=date], textarea, select { width: 100%; min-width: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-family: inherit; background: #fff; }
   input[type=date] { color: var(--text); }
   input[type=date]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: .55; }
   input[type=date]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
