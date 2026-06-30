@@ -80,9 +80,8 @@
       <div><label>每场次桌数 a</label><input type="number" id="a" value="3" min="1"></div>
       <div><label>每天场次数 b</label><input type="number" id="b" value="2" min="1"></div>
       <div><label>交手次数差上限</label><input type="number" id="x" value="2" min="0"></div>
-      <div><label>起始年</label><input type="number" id="year" value="2026" min="2000"></div>
-      <div><label>起始月</label><input type="number" id="month" value="4" min="1" max="12"></div>
-      <div class="full"><label>节假日 (MM-DD，逗号分隔；周末自动算比赛日)</label><input type="text" id="holidays" value="04-04,04-05,04-06,05-01,05-02,05-03,05-31"></div>
+      <div class="full"><label>起始日 (从该日起往后筛周末/节假日为比赛日)</label><input type="date" id="startDay"></div>
+      <div class="full"><label>节假日 (MM-DD，逗号分隔；周末自动算比赛日)</label><input type="text" id="holidays" value=""></div>
       <div class="full"><label>队伍名单 (每行一个，顺序对应 1..n 队；留空则默认 1队/2队/…)</label><textarea id="names" placeholder="留空使用默认数字队名&#10;或每行填一个名字，共 n 行"></textarea></div>
       <div><label>随机种子 (空=随机；填入=复现)</label><input type="text" id="seed" placeholder="留空随机"></div>
       <div><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);cursor:pointer"><input type="checkbox" id="full" style="width:auto"> 每天打满 (b·a 场)</label></div>
@@ -587,11 +586,19 @@ self.onmessage = function (e) {
   }
 
   // ---------- 日期生成 ----------
-  function generateDates(numDays, startYear, startMonth, holidays) {
+  // startDay: "YYYY-MM-DD"。从该日起（含）往后筛周末或节假日作为比赛日。
+  function generateDates(numDays, startDay, holidays) {
     if (numDays <= 0) return [];
     const set = new Set(holidays);
     const out = [];
-    const d = new Date(startYear, startMonth - 1, 1);
+    const parts = String(startDay).split("-").map(s => parseInt(s, 10));
+    if (parts.length !== 3 || parts.some(n => !isFinite(n) || isNaN(n))) {
+      throw new Error("起始日格式无效，应为 YYYY-MM-DD");
+    }
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    if (d.getFullYear() !== parts[0] || d.getMonth() !== parts[1] - 1 || d.getDate() !== parts[2]) {
+      throw new Error("起始日非法（如 2 月 30 日），请改正");
+    }
     let guard = 0;
     while (out.length < numDays && guard < 366 * 20) {
       const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -602,7 +609,7 @@ self.onmessage = function (e) {
       d.setDate(d.getDate() + 1);
       guard++;
     }
-    if (out.length < numDays) throw new Error("在起始日起 20 年内未能凑够 " + numDays + " 个比赛日，请检查节假日/起始月");
+    if (out.length < numDays) throw new Error("在起始日起 20 年内未能凑够 " + numDays + " 个比赛日，请检查节假日/起始日");
     return out;
   }
 
@@ -663,8 +670,7 @@ self.onmessage = function (e) {
     const cooling = parseFloat($("cooling").value);
     const restarts = parseInt($("restarts").value, 10);
     const full = $("full").checked;
-    const year = parseInt($("year").value, 10);
-    const month = parseInt($("month").value, 10);
+    const startDay = $("startDay").value; // "YYYY-MM-DD" 或空
     const holidays = $("holidays").value.split(",").map(s => s.trim()).filter(s => s !== "");
 
     const errs = [];
@@ -679,6 +685,7 @@ self.onmessage = function (e) {
     if (!(restarts >= 1)) errs.push("restarts 需 ≥ 1");
     if (!(initTemp > 0)) errs.push("initTemp 需 > 0");
     if (!(cooling > 0 && cooling < 1)) errs.push("cooling 需在 (0,1) 之间");
+    if (!startDay) errs.push("请选择起始日");
 
     let rawNames = null;
     try { rawNames = parseNames($("names").value, n); }
@@ -703,7 +710,7 @@ self.onmessage = function (e) {
 
     return {
       params: { n, m, a, b, pairDiffMax: x, exactlyFullDays: full, maxSteps, initTemp, cooling, restarts, seed },
-      meta: { year, month, holidays, rawNames, n },
+      meta: { startDay, holidays, rawNames, n },
       warnings
     };
   }
@@ -965,17 +972,26 @@ self.onmessage = function (e) {
     let maxTables = 0;
     for (const d of lastPayload.result.days) for (const s of d.slots) if (s.length > maxTables) maxTables = s.length;
     let dates;
-    try { dates = generateDates(lastPayload.result.minDays, meta.year, meta.month, meta.holidays); }
+    try { dates = generateDates(lastPayload.result.minDays, meta.startDay, meta.holidays); }
     catch (e) { $("bannerHost").innerHTML = '<div class="banner err">日期生成失败：' + escapeHtml(e.message) + "</div>"; return; }
     const csv = buildCsv(lastPayload.result.days, teamNames, dates, maxTables);
     const fname = "schedule_seed" + lastPayload.seed + ".csv";
     downloadCsv(csv, fname);
   });
 
-  ["n", "m", "a", "b", "x", "maxSteps", "initTemp", "cooling", "restarts", "names", "full"].forEach(id => {
+  ["n", "m", "a", "b", "x", "maxSteps", "initTemp", "cooling", "restarts", "names", "full", "startDay"].forEach(id => {
     $(id).addEventListener("input", liveValidate);
     $(id).addEventListener("change", liveValidate);
   });
+
+  // 默认起始日 = 今天（本地时区，YYYY-MM-DD）
+  (function setDefaultStartDay() {
+    const t = new Date();
+    const y = t.getFullYear();
+    const mo = String(t.getMonth() + 1).padStart(2, "0");
+    const da = String(t.getDate()).padStart(2, "0");
+    $("startDay").value = y + "-" + mo + "-" + da;
+  })();
 
   liveValidate();
 })();
