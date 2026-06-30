@@ -1,0 +1,335 @@
+/* ============================================================
+   共享外壳样式 —— 主页与工具合集页共用
+   配色变量与 tools/scheduler/index.html 保持一致，视觉连续
+   ============================================================ */
+:root {
+  --bg: #f5f6f8;
+  --card: #ffffff;
+  --border: #e3e6ea;
+  --text: #1f2329;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --accent-d: #1d4ed8;
+  --ok: #16a34a;
+  --bad: #dc2626;
+  --warn: #d97706;
+  --radius: 10px;
+  --nav-w: 240px;
+  --nav-w-collapsed: 0px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 1px 3px rgba(16, 24, 40, .06);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, .08);
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-d); }
+
+button {
+  padding: 9px 18px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  background: var(--accent);
+  color: #fff;
+  transition: background .15s, border-color .15s, color .15s;
+}
+button:hover:not(:disabled) { background: var(--accent-d); }
+button.ghost { background: #fff; color: var(--accent); border: 1px solid var(--accent); }
+button.ghost:hover:not(:disabled) { background: #eff4ff; }
+button:disabled { background: #c5cad2; cursor: not-allowed; }
+
+/* ============================================================
+   首页布局
+   ============================================================ */
+.home {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.home-main {
+  flex: 1;
+  max-width: 880px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 56px 20px 40px;
+}
+
+/* 头像区 */
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+  margin-bottom: 48px;
+}
+.avatar {
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: linear-gradient(135deg, #6366f1 0%, #2563eb 50%, #06b6d4 100%);
+  box-shadow: var(--shadow-md);
+  /* 兼容：img 加载失败时此处显示渐变占位 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  user-select: none;
+}
+/* 真实头像由 site.js 探测加载成功后设为 .avatar 的背景图（盖住渐变占位） */
+
+.hero .name { font-size: 26px; font-weight: 700; margin: 0; }
+.hero .bio { color: var(--muted); font-size: 15px; max-width: 560px; margin: 0; }
+.hero .links { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
+.hero .links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--card);
+}
+.hero .links a:hover { border-color: var(--accent); color: var(--accent); }
+
+/* 区段标题 */
+.section-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 0 18px;
+}
+.section-title h2 { font-size: 18px; margin: 0; }
+.section-title .more { font-size: 13px; color: var(--muted); }
+.section-title .more:hover { color: var(--accent); }
+
+/* 工具卡片网格 */
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+.tool-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  cursor: pointer;
+  transition: box-shadow .15s, transform .15s, border-color .15s;
+}
+.tool-card:hover {
+  border-color: #c7d2fe;
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+  color: var(--text);
+}
+.tool-card .icon { font-size: 24px; line-height: 1; }
+.tool-card .t { font-size: 15px; font-weight: 600; }
+.tool-card .d { font-size: 13px; color: var(--muted); }
+.tool-card .go { font-size: 12px; color: var(--accent); margin-top: auto; }
+
+/* 页脚 */
+.footer {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 28px 16px 32px;
+  border-top: 1px solid var(--border);
+  background: var(--card);
+}
+
+/* ============================================================
+   工具合集外壳布局（导航 + iframe）
+   ============================================================ */
+.shell { display: flex; min-height: 100vh; }
+
+/* 左侧导航栏 */
+.nav {
+  width: var(--nav-w);
+  flex: 0 0 var(--nav-w);
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: width .2s ease, flex-basis .2s ease;
+  overflow: hidden;
+}
+.nav.collapsed { width: 0; flex-basis: 0; border-right-color: transparent; }
+
+.nav-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 14px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.nav-head .brand {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.nav-head .brand:hover { color: var(--accent); }
+.nav-body { flex: 1; overflow-y: auto; padding: 10px 8px; }
+.nav-group { margin-bottom: 6px; }
+.nav-group .glabel {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  padding: 10px 10px 6px;
+  white-space: nowrap;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+.nav-item:hover { background: #eff4ff; color: var(--accent); }
+.nav-item.active { background: var(--accent); color: #fff; }
+.nav-item.active:hover { background: var(--accent-d); color: #fff; }
+.nav-item .ico { font-size: 16px; line-height: 1; flex: 0 0 auto; width: 20px; text-align: center; }
+.nav-item .lbl { overflow: hidden; text-overflow: ellipsis; }
+.nav-foot {
+  padding: 10px 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* 折叠态：只留图标。桌面端折叠时导航宽度收为 0（完全隐藏，见 .collapsed）。
+   此处 .nav.icon-only 预留给"窄图标条"模式，当前不启用，留作未来扩展。 */
+.nav.icon-only { width: 64px; flex-basis: 64px; }
+.nav.icon-only .brand,
+.nav.icon-only .glabel,
+.nav.icon-only .lbl { display: none; }
+.nav.icon-only .nav-item { justify-content: center; }
+
+/* 右侧内容区 */
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+/* 顶栏：始终可见，承载打开/收起导航的按钮（折叠后也能从这里再次展开） */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.topbar .nav-toggle {
+  width: 38px; height: 38px;
+  padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #fff; color: var(--text); border: 1px solid var(--border);
+  font-size: 17px;
+  line-height: 1;
+}
+.topbar .nav-toggle:hover { background: #eff4ff; color: var(--accent); }
+.topbar .topbar-title { font-size: 15px; font-weight: 600; }
+.topbar .topbar-title a { color: var(--text); }
+.topbar .topbar-title a:hover { color: var(--accent); }
+
+/* 内容容器：iframe 撑满，或卡片网格视图 */
+.content { flex: 1; position: relative; overflow: hidden; }
+.content.home-content { overflow-y: auto; }
+.content iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: var(--bg);
+}
+/* 工具列表视图（无 hash 时） */
+.list-view {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  padding: 28px 20px 48px;
+}
+.list-view .lv-inner { max-width: 980px; margin: 0 auto; }
+.list-view .lv-head { margin-bottom: 20px; }
+.list-view .lv-head h1 { font-size: 22px; margin: 0 0 4px; }
+.list-view .lv-head .sub { color: var(--muted); font-size: 13px; }
+.empty { padding: 60px 20px; text-align: center; color: var(--muted); font-size: 14px; }
+
+/* 移动端抽屉遮罩：覆盖导航右侧的剩余视口（导航本身在更上层保持可点） */
+.overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  /* left 由媒体查询里按导航宽度设置 */
+  left: 0;
+  background: rgba(16, 24, 40, .4);
+  z-index: 35;
+  cursor: pointer;
+}
+.overlay.show { display: block; }
+
+/* ============================================================
+   响应式：移动端导航变抽屉
+   ============================================================ */
+@media (max-width: 768px) {
+  .home-main { padding: 36px 16px 28px; }
+  .hero { margin-bottom: 36px; }
+  .hero .name { font-size: 22px; }
+  .tool-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+
+  /* 导航变抽屉：默认隐藏在屏幕外，z-index 高于遮罩，保证导航项可点 */
+  .nav {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: var(--nav-w);
+    flex-basis: auto;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform .22s ease;
+    box-shadow: var(--shadow-md);
+  }
+  .nav.collapsed { width: var(--nav-w); border-right-color: var(--border); }
+  .nav.open { transform: translateX(0); }
+
+  /* 遮罩只覆盖导航右侧的剩余视口，点击该区域关闭抽屉 */
+  .overlay { left: var(--nav-w); }
+}

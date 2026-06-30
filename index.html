@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AiNakow</title>
+<meta name="description" content="AiNakow 的个人主页与工具合集。">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<div class="shell">
+
+  <!-- 左侧导航栏（桌面端可折叠，移动端为抽屉） -->
+  <aside id="nav" class="nav" aria-label="导航">
+    <div class="nav-head"><a class="brand" href="index.html">AiNakow</a></div>
+    <div id="nav-body" class="nav-body"><!-- 由 site.js 注入导航项 --></div>
+  </aside>
+
+  <!-- 移动端抽屉遮罩 -->
+  <div id="overlay" class="overlay"></div>
+
+  <!-- 右侧内容区 -->
+  <div class="main">
+    <!-- 顶栏：始终可见，承载打开/收起导航的按钮 -->
+    <div class="topbar">
+      <button id="nav-toggle" class="nav-toggle" aria-label="打开/收起导航">☰</button>
+      <span id="topbar-title" class="topbar-title">AiNakow</span>
+    </div>
+
+    <div class="content home-content">
+      <div id="home-root" class="home">
+        <main class="home-main">
+
+          <!-- 头像 + 简介 -->
+          <section class="hero">
+            <div class="avatar" aria-label="头像">
+              <!-- 真实头像：把图片放到 assets/avatar.jpg 即自动生效。
+                   由下方脚本探测加载成功后再设为背景图，避免破损图图标与渐变占位同时出现。 -->
+              <span class="avatar-ph">A</span>
+            </div>
+            <h1 class="name">AiNakow</h1>
+            <p class="bio">我去，我的猫猫在自己写代码</p>
+            <div class="links">
+              <a href="https://github.com/AiNakow" target="_blank" rel="noopener">GitHub</a>
+              <a href="tools/index.html">工具合集 →</a>
+            </div>
+          </section>
+
+          <!-- 工具入口 -->
+          <section class="tools-section">
+            <div class="section-title">
+              <h2>工具</h2>
+              <a class="more" href="tools/index.html">查看全部 →</a>
+            </div>
+            <div class="tool-grid"><!-- 由 site.js 注入 --></div>
+          </section>
+
+        </main>
+
+        <footer class="footer">
+          © AiNakow · 喵呜
+        </footer>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="assets/site.js"></script>
+<script>
+  // DOM 就绪后：渲染导航外壳 + 首页内容
+  document.addEventListener("DOMContentLoaded", function () {
+    if (window.ShellBoot) ShellBoot();
+    if (window.HomeBoot) HomeBoot();
+
+    // 头像加载探测：用独立 Image() 预加载 assets/avatar.jpg，
+    // 加载成功（有像素内容）才设为背景图，渐变占位被自然盖住；
+    // 加载失败则什么都不做，保留渐变圆 + 字母占位。
+    var probe = new Image();
+    probe.onload = function () {
+      if (probe.naturalWidth > 0) {
+        var box = document.querySelector(".avatar");
+        if (box) {
+          box.style.backgroundImage = "url(assets/avatar.jpg)";
+          box.style.backgroundSize = "cover";
+          box.style.backgroundPosition = "center";
+          var ph = box.querySelector(".avatar-ph");
+          if (ph) ph.style.display = "none";
+        }
+      }
+    };
+    probe.src = "assets/avatar.jpg";
+  });
+</script>
+</body>
+</html>

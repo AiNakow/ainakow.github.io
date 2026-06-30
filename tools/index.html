@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工具合集 · AiNakow</title>
+<meta name="description" content="AiNakow 的工具合集 —— 浏览器内运行的小工具。">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<div class="shell">
+
+  <!-- 左侧导航栏（桌面端可折叠，移动端为抽屉） -->
+  <aside id="nav" class="nav" aria-label="导航">
+    <div class="nav-head"><a class="brand" href="../index.html">AiNakow</a></div>
+    <div id="nav-body" class="nav-body"><!-- 由 site.js 注入导航项 --></div>
+  </aside>
+
+  <!-- 移动端抽屉遮罩 -->
+  <div id="overlay" class="overlay"></div>
+
+  <!-- 右侧内容区 -->
+  <div class="main">
+    <!-- 顶栏：始终可见，承载打开/收起导航的按钮 -->
+    <div class="topbar">
+      <button id="nav-toggle" class="nav-toggle" aria-label="打开/收起导航">☰</button>
+      <span id="topbar-title" class="topbar-title">工具合集</span>
+    </div>
+
+    <div class="content">
+      <!-- 无 hash 时的工具卡片列表视图 -->
+      <div id="list-view" class="list-view">
+        <div class="lv-inner">
+          <div class="lv-head">
+            <h1>工具合集</h1>
+            <div class="sub">浏览器内运行的小工具 · 数据本地处理 · 点击卡片打开</div>
+          </div>
+          <div class="tool-grid"><!-- 由 site.js 注入 --></div>
+        </div>
+      </div>
+
+      <!-- 工具 iframe（有 hash 时显示） -->
+      <iframe id="frame" src="about:blank" title="工具内容" style="display:none"></iframe>
+    </div>
+  </div>
+
+</div>
+
+<script src="../assets/site.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    if (window.ShellBoot) ShellBoot();
+  });
+</script>
+</body>
+</html>
