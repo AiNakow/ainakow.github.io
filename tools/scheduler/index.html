@@ -22,8 +22,12 @@
   .grid > * { min-width: 0; } /* 关键：解除 grid item 默认 min-width:auto，避免 date input 固有最小宽度撑爆轨道（手机端溢出根因） */
   label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
   input[type=number], input[type=text], input[type=date], textarea, select { width: 100%; min-width: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-family: inherit; background: #fff; }
-  input[type=date] { color: var(--text); }
-  input[type=date]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: .55; }
+  input[type=date] {
+    -webkit-appearance: none;  /* iOS：剥掉原生日期控件外观，解除其固有最小宽度（min-width:0 在 iOS 对原生控件无效），让 width:100% 真正生效 */
+    appearance: none;
+    color: var(--text);
+  }
+  input[type=date]::-webkit-calendar-picker-indicator { display: inline-block; cursor: pointer; opacity: .55; }
   input[type=date]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
   textarea { resize: vertical; min-height: 70px; }
   input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
