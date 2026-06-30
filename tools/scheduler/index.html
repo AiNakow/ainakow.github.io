@@ -20,7 +20,10 @@
   .card h2 { font-size: 15px; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
   label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-  input[type=number], input[type=text], textarea, select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-family: inherit; background: #fff; }
+  input[type=number], input[type=text], input[type=date], textarea, select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-family: inherit; background: #fff; }
+  input[type=date] { color: var(--text); }
+  input[type=date]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: .55; }
+  input[type=date]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
   textarea { resize: vertical; min-height: 70px; }
   input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
   input.err { border-color: var(--bad); background: #fff5f5; }
@@ -76,7 +79,7 @@
     <h2>参数设置</h2>
     <div class="grid">
       <div><label>队伍数 n</label><input type="number" id="n" value="13" min="4"></div>
-      <div><label>每队场数 m</label><input type="number" id="m" value="12" min="0"></div>
+      <div><label>每队场数 m</label><input type="number" id="m" value="48" min="0"></div>
       <div><label>每场次桌数 a</label><input type="number" id="a" value="3" min="1"></div>
       <div><label>每天场次数 b</label><input type="number" id="b" value="2" min="1"></div>
       <div><label>交手次数差上限</label><input type="number" id="x" value="2" min="0"></div>
@@ -88,13 +91,24 @@
     </div>
     <div class="err-msg" id="validateErr"></div>
 
+    <div style="background:#eff4ff;border:1px solid #c7d2fe;border-radius:8px;padding:12px 14px;margin-top:12px;font-size:12.5px;color:#3730a3;line-height:1.7">
+      <div style="font-weight:600;margin-bottom:4px">💡 如何获得更优的赛程（交手次数差更小）</div>
+      <div><b>调高级参数</b>（下方折叠区）：</div>
+      <div>• <b>增大 maxSteps</b>（如 60000 → 120000）——给模拟退火更多迭代时间，解更趋近最优；</div>
+      <div>• <b>增大 restarts</b>（如 8 → 16）——多轮随机重启，从更多起点中挑最好的解；</div>
+      <div>• <b>微调 cooling</b>（如 0.99975 → 0.9999，更慢降温）——温度降得慢，搜索更细致，但需配合更大的 maxSteps。</div>
+      <div style="margin-top:6px"><b>调基础参数</b>：</div>
+      <div>• <b>增大每队场数 m</b>或<b>减小队伍数 n</b>——比赛场次更多，每对队伍交手机会增加，更易把差距压到 ≤ 上限，也更容易让所有队伍都至少交手一次。</div>
+      <div style="margin-top:6px;color:#6b7280">提示：每次生成带随机种子，换种子或点「再生成一个」也会得到不同质量的解；固定同一种子可复现某个解。</div>
+    </div>
+
     <details>
       <summary>高级参数 (模拟退火超参)</summary>
       <div class="grid" style="margin-top:12px">
-        <div><label>maxSteps</label><input type="number" id="maxSteps" value="60000" min="1000"></div>
-        <div><label>initTemp</label><input type="number" id="initTemp" value="3.2" step="0.1"></div>
-        <div><label>cooling</label><input type="number" id="cooling" value="0.99975" step="0.00005"></div>
-        <div><label>restarts</label><input type="number" id="restarts" value="8" min="1"></div>
+        <div><label>maxSteps（最大迭代轮次）</label><input type="number" id="maxSteps" value="240000" min="1000"></div>
+        <div><label>initTemp（起始温度）</label><input type="number" id="initTemp" value="30" step="0.1"></div>
+        <div><label>cooling（降温系数）</label><input type="number" id="cooling" value="0.99975" step="0.00005"></div>
+        <div><label>restarts（重试次数）</label><input type="number" id="restarts" value="8" min="1"></div>
       </div>
     </details>
 
@@ -103,6 +117,7 @@
       <button id="regenBtn" class="ghost" disabled>再生成一个 (换种子)</button>
       <button id="cancelBtn" class="ghost" disabled>取消</button>
       <button id="dlBtn" class="ghost" disabled>下载 CSV</button>
+      <button id="resetBtn" class="ghost">初始化所有参数</button>
     </div>
     <div class="progress" id="progress"><div id="progressBar"></div></div>
     <div class="progress-label" id="progressLabel"></div>
@@ -658,6 +673,73 @@ self.onmessage = function (e) {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  // ---------- 输入持久化 (localStorage) ----------
+  // 需持久化的输入 id 列表（含基础参数 + 高级参数）
+  const PERSIST_IDS = ["n", "m", "a", "b", "x", "startDay", "holidays", "names", "seed", "full", "maxSteps", "initTemp", "cooling", "restarts"];
+  const STORAGE_KEY = "match_scheduler_inputs_v1";
+
+  // 各字段的默认值：直接读取 HTML 初始属性（input/textarea 读 defaultValue，
+  // checkbox 读 defaultChecked），避免与 HTML 里的 value 漂移。
+  // 注意：startDay/seed 在 HTML 中无 value 属性，默认为 ""，
+  // 由 loadInputs()/resetInputs() 兜底为今天 / 留空随机。
+  function defaultValues() {
+    const v = {};
+    for (const id of PERSIST_IDS) {
+      const el = $(id);
+      if (!el) { v[id] = ""; continue; }
+      v[id] = el.type === "checkbox" ? el.defaultChecked : el.defaultValue;
+    }
+    return v;
+  }
+
+  function saveInputs() {
+    try {
+      const data = {};
+      for (const id of PERSIST_IDS) {
+        const el = $(id);
+        if (!el) continue;
+        if (el.type === "checkbox") data[id] = el.checked;
+        else data[id] = el.value;
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) { /* 配额/隐私模式失败时静默忽略 */ }
+  }
+
+  function loadInputs() {
+    let data = null;
+    try { data = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch (e) { data = null; }
+    const defs = defaultValues();
+    for (const id of PERSIST_IDS) {
+      const el = $(id);
+      if (!el) continue;
+      let v = (data && data[id] !== undefined && data[id] !== null) ? data[id] : defs[id];
+      if (id === "startDay" && v === "") v = todayStr(); // 兜底：今天
+      if (el.type === "checkbox") el.checked = !!v;
+      else el.value = v;
+    }
+  }
+
+  function resetInputs() {
+    const defs = defaultValues();
+    defs.startDay = todayStr();
+    for (const id of PERSIST_IDS) {
+      const el = $(id);
+      if (!el) continue;
+      if (el.type === "checkbox") el.checked = defs[id];
+      else el.value = defs[id];
+    }
+    saveInputs();
+    liveValidate();
+  }
+
+  function todayStr() {
+    const t = new Date();
+    const y = t.getFullYear();
+    const mo = String(t.getMonth() + 1).padStart(2, "0");
+    const da = String(t.getDate()).padStart(2, "0");
+    return y + "-" + mo + "-" + da;
+  }
+
   // ---------- 输入读取与校验 ----------
   function readParams(allowRandomSeed) {
     const n = parseInt($("n").value, 10);
@@ -794,9 +876,9 @@ self.onmessage = function (e) {
     html += statBox("天数", payload.result.minDays);
     html += statBox("每天场次数 b", b);
     html += statBox("每场次桌数 a", a);
-    html += statBox("交手 min", payload.minPair);
-    html += statBox("交手 max", payload.maxPair);
-    html += statBox("交手 avg", payload.avgPair.toFixed(3), true);
+    html += statBox("最多交手次数 min", payload.minPair);
+    html += statBox("最少交手次数 max", payload.maxPair);
+    html += statBox("平均交手次数 avg", payload.avgPair.toFixed(3), true);
     html += statBox("从未交手对组", payload.neverPlayed.length);
     html += statBox("SA 收敛 score", payload.finalScore, true);
     html += statBox("实际 restarts", payload.restartsUsed + "/" + (parseInt($("restarts").value, 10)));
@@ -980,19 +1062,19 @@ self.onmessage = function (e) {
   });
 
   ["n", "m", "a", "b", "x", "maxSteps", "initTemp", "cooling", "restarts", "names", "full", "startDay"].forEach(id => {
-    $(id).addEventListener("input", liveValidate);
-    $(id).addEventListener("change", liveValidate);
+    $(id).addEventListener("input", () => { liveValidate(); saveInputs(); });
+    $(id).addEventListener("change", () => { liveValidate(); saveInputs(); });
+  });
+  $("holidays").addEventListener("input", saveInputs);
+  $("seed").addEventListener("input", saveInputs);
+
+  // 重置所有参数到默认值
+  $("resetBtn").addEventListener("click", () => {
+    if (confirm("确定要把所有参数（含高级参数）初始化为默认值吗？")) resetInputs();
   });
 
-  // 默认起始日 = 今天（本地时区，YYYY-MM-DD）
-  (function setDefaultStartDay() {
-    const t = new Date();
-    const y = t.getFullYear();
-    const mo = String(t.getMonth() + 1).padStart(2, "0");
-    const da = String(t.getDate()).padStart(2, "0");
-    $("startDay").value = y + "-" + mo + "-" + da;
-  })();
-
+  // 页面加载：先恢复持久化的输入，再触发校验
+  loadInputs();
   liveValidate();
 })();
 </script>
