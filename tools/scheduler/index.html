@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>团队赛分组器</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --border: #e3e6ea; --text: #1f2329;
+    --muted: #6b7280; --accent: #2563eb; --accent-d: #1d4ed8; --ok: #16a34a;
+    --ok-bg: #dcfce7; --bad: #dc2626; --bad-bg: #fee2e2; --warn: #d97706;
+    --warn-bg: #fef3c7; --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  input[type=number], input[type=text], textarea, select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-family: inherit; background: #fff; }
+  textarea { resize: vertical; min-height: 70px; }
+  input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+  input.err { border-color: var(--bad); background: #fff5f5; }
+  .hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .err-msg { color: var(--bad); font-size: 12px; margin-top: 4px; min-height: 14px; }
+  .full { grid-column: 1 / -1; }
+  details { margin-top: 12px; border-top: 1px dashed var(--border); padding-top: 12px; }
+  summary { cursor: pointer; font-size: 13px; color: var(--muted); user-select: none; }
+  .btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+  button { padding: 9px 18px; border: none; border-radius: 6px; font-size: 14px; font-family: inherit; cursor: pointer; background: var(--accent); color: #fff; transition: background .15s; }
+  button:hover:not(:disabled) { background: var(--accent-d); }
+  button:disabled { background: #c5cad2; cursor: not-allowed; }
+  button.ghost { background: #fff; color: var(--accent); border: 1px solid var(--accent); }
+  button.ghost:hover:not(:disabled) { background: #eff4ff; }
+  .progress { height: 8px; background: #eef0f3; border-radius: 4px; overflow: hidden; margin-top: 14px; display: none; }
+  .progress.show { display: block; }
+  .progress > div { height: 100%; width: 0%; background: var(--accent); transition: width .1s; }
+  .progress-label { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .quality { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .stat { background: #fafbfc; border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+  .stat .k { font-size: 12px; color: var(--muted); }
+  .stat .v { font-size: 20px; font-weight: 600; margin-top: 2px; }
+  .stat .v.sm { font-size: 15px; }
+  .spread-card { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: 8px; }
+  .spread-card.ok { background: var(--ok-bg); border: 1px solid #bbf7d0; }
+  .spread-card.bad { background: var(--bad-bg); border: 1px solid #fecaca; }
+  .spread-card .big { font-size: 34px; font-weight: 700; line-height: 1; }
+  .spread-card .lbl { font-size: 13px; color: var(--muted); }
+  .dist { font-size: 13px; line-height: 1.9; }
+  .dist span { display: inline-block; background: #eef2ff; color: var(--accent-d); padding: 1px 8px; border-radius: 10px; margin: 2px 4px 2px 0; }
+  .banner { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
+  .banner.warn { background: var(--warn-bg); color: #92400e; border: 1px solid #fde68a; }
+  .banner.err { background: var(--bad-bg); color: #991b1b; border: 1px solid #fecaca; }
+  .banner.ok { background: var(--ok-bg); color: #166534; border: 1px solid #bbf7d0; }
+  #preview { max-height: 520px; overflow: auto; }
+  .day-card { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+  .day-card .dh { background: #f0f4ff; padding: 8px 12px; font-size: 13px; font-weight: 600; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { border: 1px solid var(--border); padding: 6px 10px; text-align: center; white-space: nowrap; }
+  th { background: #fafbfc; font-weight: 600; color: var(--muted); }
+  td.slot { background: #fafbfc; font-weight: 600; color: var(--muted); width: 64px; }
+  .muted { color: var(--muted); }
+  .seed-tag { font-family: ui-monospace, Consolas, monospace; background: #f0f4ff; padding: 2px 8px; border-radius: 6px; font-size: 13px; }
+  .footer { color: var(--muted); font-size: 12px; margin-top: 20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>团队赛分组器</h1>
+  <div class="sub">模拟退火求解 · 浏览器内运行 · 支持 CSV 下载 · 每次解带随机种子，尽量不同</div>
+
+  <div class="card">
+    <h2>参数设置</h2>
+    <div class="grid">
+      <div><label>队伍数 n</label><input type="number" id="n" value="13" min="4"></div>
+      <div><label>每队场数 m</label><input type="number" id="m" value="12" min="0"></div>
+      <div><label>每场次桌数 a</label><input type="number" id="a" value="3" min="1"></div>
+      <div><label>每天场次数 b</label><input type="number" id="b" value="2" min="1"></div>
+      <div><label>交手次数差上限</label><input type="number" id="x" value="2" min="0"></div>
+      <div><label>起始年</label><input type="number" id="year" value="2026" min="2000"></div>
+      <div><label>起始月</label><input type="number" id="month" value="4" min="1" max="12"></div>
+      <div class="full"><label>节假日 (MM-DD，逗号分隔；周末自动算比赛日)</label><input type="text" id="holidays" value="04-04,04-05,04-06,05-01,05-02,05-03,05-31"></div>
+      <div class="full"><label>队伍名单 (每行一个，顺序对应 1..n 队；留空则默认 1队/2队/…)</label><textarea id="names" placeholder="留空使用默认数字队名&#10;或每行填一个名字，共 n 行"></textarea></div>
+      <div><label>随机种子 (空=随机；填入=复现)</label><input type="text" id="seed" placeholder="留空随机"></div>
+      <div><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);cursor:pointer"><input type="checkbox" id="full" style="width:auto"> 每天打满 (b·a 场)</label></div>
+    </div>
+    <div class="err-msg" id="validateErr"></div>
+
+    <details>
+      <summary>高级参数 (模拟退火超参)</summary>
+      <div class="grid" style="margin-top:12px">
+        <div><label>maxSteps</label><input type="number" id="maxSteps" value="60000" min="1000"></div>
+        <div><label>initTemp</label><input type="number" id="initTemp" value="3.2" step="0.1"></div>
+        <div><label>cooling</label><input type="number" id="cooling" value="0.99975" step="0.00005"></div>
+        <div><label>restarts</label><input type="number" id="restarts" value="8" min="1"></div>
+      </div>
+    </details>
+
+    <div class="btns">
+      <button id="genBtn">生成赛程</button>
+      <button id="regenBtn" class="ghost" disabled>再生成一个 (换种子)</button>
+      <button id="cancelBtn" class="ghost" disabled>取消</button>
+      <button id="dlBtn" class="ghost" disabled>下载 CSV</button>
+    </div>
+    <div class="progress" id="progress"><div id="progressBar"></div></div>
+    <div class="progress-label" id="progressLabel"></div>
+  </div>
+
+  <div id="bannerHost"></div>
+
+  <div class="card" id="qualityCard" style="display:none">
+    <h2>解质量</h2>
+    <div id="qualityBody"></div>
+  </div>
+
+  <div class="card" id="previewCard" style="display:none">
+    <h2>赛程预览</h2>
+    <div id="preview"></div>
+  </div>
+
+  <div class="footer">说明：每场 4 队同桌；同一场次内 a 桌队伍互不重复；每队正好 m 场；目标让两两交手次数均衡（最大交手次数差 ≤ 上限）。求解在浏览器本地完成，不上传任何数据。</div>
+</div>
+
+<!-- ============ Web Worker 源码（PRNG + SA 求解器 + 增量 pair_count） ============ -->
+<script id="worker-src" type="javascript/worker">
+"use strict";
+
+// ---------- 可种子化 PRNG (mulberry32) ----------
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+class Rng {
+  constructor(seed) { this._r = mulberry32(seed); }
+  next() { return this._r(); }
+  int(n) { return Math.floor(this._r() * n); }          // [0, n)
+  random() { return this._r(); }
+  choice(arr) { return arr[this.int(arr.length)]; }
+  shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = this.int(i + 1);
+      const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    return arr;
+  }
+  // 从 [0,n) 中取 2 个不同整数
+  sampleInt2(n) {
+    const i = this.int(n);
+    let j = this.int(n - 1);
+    if (j >= i) j++;
+    return [i, j];
+  }
+  // 带权有放回采样，返回数组
+  choices(arr, weights, k) {
+    let total = 0;
+    for (let i = 0; i < weights.length; i++) total += weights[i];
+    const out = [];
+    for (let kk = 0; kk < k; kk++) {
+      let r = this._r() * total;
+      let idx = arr.length - 1;
+      for (let j = 0; j < arr.length; j++) {
+        r -= weights[j];
+        if (r <= 0) { idx = j; break; }
+      }
+      out.push(arr[idx]);
+    }
+    return out;
+  }
+}
+
+// ---------- 求解器 ----------
+let cancelled = false;
+
+function solve(params, post) {
+  const n = params.n, m = params.m, a = params.a, b = params.b;
+  const exactlyFullDays = !!params.exactlyFullDays;
+  const pairDiffMax = params.pairDiffMax;
+  const maxSteps = params.maxSteps, initTemp = params.initTemp;
+  const cooling = params.cooling, restarts = params.restarts;
+  const seed = params.seed >>> 0;
+
+  // ---- 参数校验 ----
+  if (n < 4) throw new Error("无解：n 必须 >= 4");
+  if (m < 0) throw new Error("无解：m 不能为负");
+  if (a <= 0) throw new Error("无解：a 必须 > 0");
+  if (b < 1) throw new Error("无解：b 必须 >= 1");
+  if (pairDiffMax < 0) throw new Error("无解：交手次数差上限不能为负");
+  const nm = n * m;
+  if (nm % 4 !== 0) throw new Error("无解：n*m=" + nm + " 不能被 4 整除（总人次须能凑成 4 队同桌）");
+  const totalGames = Math.floor(nm / 4);
+  const dayCapacity = b * a;
+  if (exactlyFullDays && totalGames % dayCapacity !== 0)
+    throw new Error("无解：要求每天打满时，总场次 " + totalGames + " 必须能被 b·a=" + dayCapacity + " 整除");
+
+  // ---- 空赛程 ----
+  if (totalGames === 0) {
+    return { ok: true, result: { totalGames: 0, minDays: 0, dayCapacity, days: [] },
+      spread: 0, minPair: 0, maxPair: 0, avgPair: 0, pairHist: {0: 0}, neverPlayed: [],
+      perTeamCounts: new Array(n).fill(0), finalScore: 0, restartsUsed: 0, earlyStop: true, seed };
+  }
+
+  const rng = new Rng(seed);
+
+  // ---- 场次容量规划（仅依赖 a，与 b 无关）----
+  const fullSlots = Math.floor(totalGames / a);
+  const tailGames = totalGames % a;
+  const gamesPerSlot = [];
+  for (let s = 0; s < fullSlots; s++) gamesPerSlot.push(a);
+  if (tailGames > 0) gamesPerSlot.push(tailGames);
+  const slotCount = gamesPerSlot.length;
+  const slotTeamCounts = gamesPerSlot.map(g => 4 * g);
+
+  const teams = []; for (let i = 0; i < n; i++) teams.push(i);
+  const totalPairs = (n * (n - 1)) / 2;
+
+  // ---- 增量 pair_count 状态 ----
+  // pc: 平坦数组 n*n，仅用 i<j 处存该对交手次数
+  // countFreq[c] = 交手次数恰为 c 的对数；据此 O(1)~O(spread) 维护 min/max
+  let pc, countFreq, sq, minCount, maxCount, cfLenM;
+  function resetState() {
+    pc = new Int32Array(n * n);
+    countFreq = new Int32Array(m + 2);
+    cfLenM = countFreq.length - 1;
+    countFreq[0] = totalPairs;
+    sq = 0; minCount = 0; maxCount = 0;
+  }
+  function bump(idx, d) {
+    const old = pc[idx];
+    const neu = old + d;
+    pc[idx] = neu;
+    sq += neu * neu - old * old;
+    countFreq[old]--;
+    countFreq[neu]++;
+    if (neu > maxCount) maxCount = neu;
+    if (neu < minCount) minCount = neu;
+    if (countFreq[old] === 0) {
+      if (old === maxCount) { while (maxCount > 0 && countFreq[maxCount] === 0) maxCount--; }
+      if (old === minCount) { while (minCount < cfLenM && countFreq[minCount] === 0) minCount++; }
+    }
+  }
+  // 一桌 4 队的 6 个对（i<j），压入缓冲
+  function pushTableDeltas(table, d) {
+    const x0 = table[0], x1 = table[1], x2 = table[2], x3 = table[3];
+    const ps = [
+      [x0 < x1 ? x0 : x1, x0 < x1 ? x1 : x0],
+      [x0 < x2 ? x0 : x2, x0 < x2 ? x2 : x0],
+      [x0 < x3 ? x0 : x3, x0 < x3 ? x3 : x0],
+      [x1 < x2 ? x1 : x2, x1 < x2 ? x2 : x1],
+      [x1 < x3 ? x1 : x3, x1 < x3 ? x3 : x1],
+      [x2 < x3 ? x2 : x3, x2 < x3 ? x3 : x2],
+    ];
+    for (let k = 0; k < 6; k++) {
+      const i = ps[k][0], j = ps[k][1];
+      DBUF[DLEN++] = i * n + j; DBUF[DLEN++] = d;
+    }
+  }
+  // 复用的增量缓冲（idx, delta 交替）
+  let DBUF = new Int32Array(2048);
+  let DLEN = 0;
+  function applyDeltas() { for (let i = 0; i < DLEN; i += 2) bump(DBUF[i], DBUF[i + 1]); }
+  function revertDeltas() { for (let i = 0; i < DLEN; i += 2) bump(DBUF[i], -DBUF[i + 1]); }
+  function score() {
+    const spread = maxCount - minCount;
+    const penalty = spread > pairDiffMax ? spread - pairDiffMax : 0;
+    // 0 次对（从未交手）给予高权重惩罚，与硬约束 penalty 同量级，
+    // 促使 SA 优先消除"从未交手"再优化交手均衡度。
+    // countFreq[0] 即当前交手 0 次的对数，O(1) 可得。
+    const zeroCount = countFreq[0];
+    return penalty * 100000 + zeroCount * 100000 + spread * 1000 + sq;
+  }
+
+  function applyAllTables(slotGames) {
+    for (let s = 0; s < slotCount; s++)
+      for (let g = 0; g < slotGames[s].length; g++)
+        pushTableDeltasAndBump(slotGames[s][g]);
+  }
+  function pushTableDeltasAndBump(table) { // 直接 bump（初始化用）
+    const x0 = table[0], x1 = table[1], x2 = table[2], x3 = table[3];
+    const ps = [
+      [x0 < x1 ? x0 : x1, x0 < x1 ? x1 : x0],
+      [x0 < x2 ? x0 : x2, x0 < x2 ? x2 : x0],
+      [x0 < x3 ? x0 : x3, x0 < x3 ? x3 : x0],
+      [x1 < x2 ? x1 : x2, x1 < x2 ? x2 : x1],
+      [x1 < x3 ? x1 : x3, x1 < x3 ? x3 : x1],
+      [x2 < x3 ? x2 : x3, x2 < x3 ? x3 : x2],
+    ];
+    for (let k = 0; k < 6; k++) bump(ps[k][0] * n + ps[k][1], 1);
+  }
+
+  function teamInSlot(t, s) {
+    const games = slotGames[s];
+    for (let g = 0; g < games.length; g++) {
+      const tb = games[g];
+      if (tb[0] === t || tb[1] === t || tb[2] === t || tb[3] === t) return true;
+    }
+    return false;
+  }
+
+  let slotGames; // 当前解（可变）
+
+  // ---- 随机构造队伍-场次分配 ----
+  // 策略：每队按"剩余容量大的场次优先"贪心选择（保证高受限场景可行），
+  // 并以 35% 概率随机扰动（保留解多样性，SA 邻域进一步分化）。
+  // 原 Python 版纯加权随机在大规模(如每队近填满所有场次)时极易卡死，此为鲁棒改进。
+  function buildInitialSlotTeams() {
+    for (let attempt = 0; attempt < 2000; attempt++) {
+      const capacities = slotTeamCounts.slice();
+      const sTeams = []; for (let s = 0; s < slotCount; s++) sTeams.push([]);
+      const tSlots = []; for (let t = 0; t < n; t++) tSlots.push(new Set());
+      const order = teams.slice(); rng.shuffle(order);
+      let ok = true;
+      for (let oi = 0; oi < n; oi++) {
+        const t = order[oi];
+        const picked = [];
+        for (let k = 0; k < m; k++) {
+          const candidates = [];
+          for (let s = 0; s < slotCount; s++) {
+            if (capacities[s] > 0 && !tSlots[t].has(s)) candidates.push(s);
+          }
+          if (candidates.length === 0) { ok = false; break; }
+          // 容量大的场次优先（更易满足高受限分配），辅以随机扰动
+          candidates.sort(function (s1, s2) { return capacities[s2] - capacities[s1]; });
+          let s;
+          if (rng.random() < 0.65) s = candidates[0];
+          else s = candidates[rng.int(candidates.length)];
+          capacities[s]--;
+          tSlots[t].add(s);
+          picked.push(s);
+        }
+        if (!ok) break;
+        for (let pi = 0; pi < picked.length; pi++) sTeams[picked[pi]].push(t);
+      }
+      if (!ok) continue;
+      let bad = false;
+      for (let s = 0; s < slotCount; s++) if (capacities[s] !== 0 || sTeams[s].length !== slotTeamCounts[s]) { bad = true; break; }
+      if (bad) continue;
+      return sTeams;
+    }
+    return null;
+  }
+  function slotTeamsToGames(sTeams) {
+    const sg = [];
+    for (let s = 0; s < slotCount; s++) {
+      const sh = sTeams[s].slice(); rng.shuffle(sh);
+      const games = [];
+      for (let i = 0; i < gamesPerSlot[s]; i++) games.push(sh.slice(4 * i, 4 * i + 4));
+      sg.push(games);
+    }
+    return sg;
+  }
+  function deepCopy(sg) {
+    const out = [];
+    for (let s = 0; s < sg.length; s++) {
+      const slot = sg[s], cs = [];
+      for (let g = 0; g < slot.length; g++) cs.push(slot[g].slice());
+      out.push(cs);
+    }
+    return out;
+  }
+
+  // ---- 邻域：返回 { commit } 并填充 DBUF/DLEN（增量已应用，拒绝时需 revert）----
+  function propose() {
+    DLEN = 0;
+    const moveType = rng.random() < 0.55 ? 0 : 1;
+    if (moveType === 0 && slotCount >= 2) {
+      for (let tr = 0; tr < 80; tr++) {
+        const p = rng.sampleInt2(slotCount);
+        const s1 = p[0], s2 = p[1];
+        const g1 = slotGames[s1].length, g2 = slotGames[s2].length;
+        const ta1 = rng.int(g1), p1 = rng.int(4);
+        const ta2 = rng.int(g2), p2 = rng.int(4);
+        const x = slotGames[s1][ta1][p1];
+        const y = slotGames[s2][ta2][p2];
+        if (x === y) continue;
+        if (teamInSlot(x, s2) || teamInSlot(y, s1)) continue;
+        const newT1 = slotGames[s1][ta1].slice(); newT1[p1] = y;
+        const newT2 = slotGames[s2][ta2].slice(); newT2[p2] = x;
+        pushTableDeltas(slotGames[s1][ta1], -1);
+        pushTableDeltas(slotGames[s2][ta2], -1);
+        pushTableDeltas(newT1, 1);
+        pushTableDeltas(newT2, 1);
+        return { commit: () => { slotGames[s1][ta1] = newT1; slotGames[s2][ta2] = newT2; } };
+      }
+    }
+    // 场次内重排
+    const s = rng.int(slotCount);
+    const oldTables = slotGames[s];
+    const flat = [];
+    for (let g = 0; g < oldTables.length; g++) flat.push(oldTables[g][0], oldTables[g][1], oldTables[g][2], oldTables[g][3]);
+    rng.shuffle(flat);
+    const newTables = [];
+    for (let i = 0; i < gamesPerSlot[s]; i++) newTables.push(flat.slice(4 * i, 4 * i + 4));
+    for (let g = 0; g < oldTables.length; g++) pushTableDeltas(oldTables[g], -1);
+    for (let g = 0; g < newTables.length; g++) pushTableDeltas(newTables[g], 1);
+    return { commit: () => { slotGames[s] = newTables; } };
+  }
+
+  // ---- 主循环 ----
+  let overall = null; // { slotGames, score, min, max }
+  let restartsUsed = 0;
+  let earlyStop = false;
+
+  for (let r = 0; r < restarts; r++) {
+    restartsUsed = r + 1;
+    const sTeams = buildInitialSlotTeams();
+    if (!sTeams) continue;
+    slotGames = slotTeamsToGames(sTeams);
+    resetState();
+    applyAllTables(slotGames);
+    let curScore = score();
+    let bestScore = curScore;
+    let bestMin = minCount, bestMax = maxCount, bestZero = countFreq[0];
+    let bestSG = deepCopy(slotGames);
+
+    let temp = initTemp;
+    for (let step = 0; step < maxSteps; step++) {
+      const move = propose();
+      const snapMin = minCount, snapMax = maxCount;
+      applyDeltas();
+      const newScore = score();
+      const delta = newScore - curScore;
+      if (delta <= 0 || (temp > 1e-12 && rng.random() < Math.exp(-delta / temp))) {
+        move.commit();
+        curScore = newScore;
+        if (curScore < bestScore) {
+          bestScore = curScore; bestMin = minCount; bestMax = maxCount; bestZero = countFreq[0]; bestSG = deepCopy(slotGames);
+        }
+      } else {
+        revertDeltas();
+        minCount = snapMin; maxCount = snapMax;
+      }
+      temp *= cooling;
+
+      if ((step & 8191) === 0) {
+        if (post) post.progress((r * maxSteps + step) / (restarts * maxSteps), maxCount - minCount);
+        if (cancelled) return { aborted: true };
+      }
+      // 早停条件：spread 达标 且 不存在从未交手的对组
+      if (maxCount - minCount <= pairDiffMax && countFreq[0] === 0) { earlyStop = true; break; }
+    }
+    if (!overall || bestScore < overall.score) overall = { slotGames: bestSG, score: bestScore, min: bestMin, max: bestMax, zero: bestZero };
+    // restart 间早停：best 解 spread 达标 且 无 0 次对
+    if (bestMax - bestMin <= pairDiffMax && bestZero === 0) { earlyStop = true; break; }
+  }
+
+  if (!overall) throw new Error("未找到可行初始排程，请尝试调整 n/m/a 参数");
+
+  // ---- 由最优解重建统计与赛程 ----
+  const bestSG = overall.slotGames;
+  // 重算 pc/pairHist/neverPlayed/perTeamCounts
+  const pcFinal = new Int32Array(n * n);
+  const perTeam = new Int32Array(n);
+  for (let s = 0; s < bestSG.length; s++) {
+    for (let g = 0; g < bestSG[s].length; g++) {
+      const tb = bestSG[s][g];
+      perTeam[tb[0]]++; perTeam[tb[1]]++; perTeam[tb[2]]++; perTeam[tb[3]]++;
+      const xs = [tb[0], tb[1], tb[2], tb[3]];
+      for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) {
+        const lo = xs[i] < xs[j] ? xs[i] : xs[j], hi = xs[i] < xs[j] ? xs[j] : xs[i];
+        pcFinal[lo * n + hi]++;
+      }
+    }
+  }
+  const hist = {};
+  let minP = Infinity, maxP = -Infinity, sumP = 0, countP = 0;
+  const neverPlayed = [];
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const c = pcFinal[i * n + j];
+      hist[c] = (hist[c] || 0) + 1;
+      if (c < minP) minP = c;
+      if (c > maxP) maxP = c;
+      sumP += c; countP++;
+      if (c === 0) neverPlayed.push([i + 1, j + 1]);
+    }
+  }
+  const spread = maxP - minP;
+  // 最终判定：spread 达标 且 不存在从未交手的对组（0 次对）
+  const ok = spread <= pairDiffMax && neverPlayed.length === 0;
+
+  // ---- 转天结构（受 b 控制）----
+  const flat = [];
+  for (let s = 0; s < bestSG.length; s++) for (let g = 0; g < bestSG[s].length; g++) flat.push(bestSG[s][g]);
+  const minDays = Math.ceil(totalGames / dayCapacity);
+  const days = [];
+  let idx = 0;
+  for (let day = 1; day <= minDays; day++) {
+    const today = flat.slice(idx, idx + dayCapacity);
+    idx += today.length;
+    const slots = [];
+    for (let s = 0; s < b; s++) {
+      const slotGamesDay = today.slice(s * a, s * a + a);
+      // 转 1-based
+      const g1 = [];
+      for (let g = 0; g < slotGamesDay.length; g++) {
+        const t = slotGamesDay[g];
+        g1.push([t[0] + 1, t[1] + 1, t[2] + 1, t[3] + 1]);
+      }
+      slots.push(g1);
+    }
+    days.push({ day, slots });
+  }
+
+  return {
+    ok,
+    result: { totalGames, minDays, dayCapacity, days },
+    spread, minPair: minP, maxPair: maxP, avgPair: sumP / countP,
+    pairHist: hist, neverPlayed,
+    perTeamCounts: Array.from(perTeam),
+    finalScore: overall.score, restartsUsed, earlyStop, seed
+  };
+}
+
+// ---------- Worker 入口 ----------
+self.onmessage = function (e) {
+  const msg = e.data;
+  if (msg.type === "cancel") { cancelled = true; return; }
+  if (msg.type === "run") {
+    cancelled = false;
+    try {
+      const res = solve(msg.params, {
+        progress: function (ratio, spread) { self.postMessage({ type: "progress", ratio: ratio, spread: spread }); }
+      });
+      if (res && res.aborted) { self.postMessage({ type: "cancelled" }); return; }
+      self.postMessage({ type: "done", payload: res });
+    } catch (err) {
+      self.postMessage({ type: "error", message: err.message });
+    }
+  }
+};
+</script>
+
+<!-- ============ 主线程：UI / 校验 / 渲染 / CSV 下载 ============ -->
+<script>
+"use strict";
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const ordMap = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"];
+
+  // ---------- 随机种子 ----------
+  function randomSeed() {
+    if (window.crypto && window.crypto.getRandomValues) {
+      const arr = new Uint32Array(1);
+      window.crypto.getRandomValues(arr);
+      return arr[0];
+    }
+    return ((Date.now() ^ 0x5BF03635) >>> 0);
+  }
+  function parseSeed(s) {
+    if (s == null) return null;
+    s = String(s).trim();
+    if (s === "") return null;
+    // 支持十进制或 0x 十六进制
+    let v = /^0x[0-9a-f]+$/i.test(s) ? parseInt(s, 16) : parseInt(s, 10);
+    if (!isFinite(v) || isNaN(v)) return null;
+    return v >>> 0;
+  }
+
+  // ---------- 队名 ----------
+  function buildTeamNames(n, rawNames) {
+    if (rawNames == null) {
+      const arr = []; for (let i = 0; i < n; i++) arr.push((i + 1) + "队"); return arr;
+    }
+    return rawNames.slice();
+  }
+  function parseNames(text, n) {
+    if (text == null) return null;
+    text = text.trim();
+    if (text === "") return null;
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l !== "");
+    if (lines.length !== n)
+      throw new Error("名单行数 " + lines.length + " 与队伍数 " + n + " 不符（每行一个名字，顺序对应 1..n 队）");
+    const seen = new Set();
+    for (const l of lines) {
+      if (seen.has(l)) throw new Error("名单存在重复名字：「" + l + "」");
+      seen.add(l);
+    }
+    return lines;
+  }
+
+  // ---------- 日期生成 ----------
+  function generateDates(numDays, startYear, startMonth, holidays) {
+    if (numDays <= 0) return [];
+    const set = new Set(holidays);
+    const out = [];
+    const d = new Date(startYear, startMonth - 1, 1);
+    let guard = 0;
+    while (out.length < numDays && guard < 366 * 20) {
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mmdd = mm + "-" + dd;
+      const dow = d.getDay();
+      if (dow === 0 || dow === 6 || set.has(mmdd)) out.push(d.getFullYear() + "-" + mm + "-" + dd);
+      d.setDate(d.getDate() + 1);
+      guard++;
+    }
+    if (out.length < numDays) throw new Error("在起始日起 20 年内未能凑够 " + numDays + " 个比赛日，请检查节假日/起始月");
+    return out;
+  }
+
+  // ---------- CSV ----------
+  function csvCell(v) {
+    if (v === "" || v == null) return "";
+    const s = String(v);
+    if (/[",\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+  function buildCsv(days, teamNames, dates, maxTables) {
+    const lines = [];
+    const header = ["日期"];
+    for (let t = 0; t < maxTables; t++) {
+      const name = t < ordMap.length ? "第" + ordMap[t] + "桌" : "第" + (t + 1) + "桌";
+      header.push(name + "队伍1", name + "队伍2", name + "队伍3", name + "队伍4");
+      if (t !== maxTables - 1) header.push("");
+    }
+    lines.push(header.map(csvCell).join(","));
+    for (let d = 0; d < days.length; d++) {
+      const date = dates[d] || "";
+      for (let s = 0; s < days[d].slots.length; s++) {
+        const games = days[d].slots[s];
+        const row = [date];
+        for (let t = 0; t < maxTables; t++) {
+          if (t < games.length) {
+            const g = games[t];
+            row.push(teamNames[g[0] - 1], teamNames[g[1] - 1], teamNames[g[2] - 1], teamNames[g[3] - 1]);
+          } else {
+            row.push("", "", "", "");
+          }
+          if (t !== maxTables - 1) row.push("");
+        }
+        lines.push(row.map(csvCell).join(","));
+      }
+    }
+    return lines.join("\r\n");
+  }
+  function downloadCsv(text, filename) {
+    const blob = new Blob(["﻿" + text], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  // ---------- 输入读取与校验 ----------
+  function readParams(allowRandomSeed) {
+    const n = parseInt($("n").value, 10);
+    const m = parseInt($("m").value, 10);
+    const a = parseInt($("a").value, 10);
+    const b = parseInt($("b").value, 10);
+    const x = parseInt($("x").value, 10);
+    const maxSteps = parseInt($("maxSteps").value, 10);
+    const initTemp = parseFloat($("initTemp").value);
+    const cooling = parseFloat($("cooling").value);
+    const restarts = parseInt($("restarts").value, 10);
+    const full = $("full").checked;
+    const year = parseInt($("year").value, 10);
+    const month = parseInt($("month").value, 10);
+    const holidays = $("holidays").value.split(",").map(s => s.trim()).filter(s => s !== "");
+
+    const errs = [];
+    if (!(n >= 4)) errs.push("队伍数 n 需 ≥ 4");
+    if (!(m >= 0)) errs.push("每队场数 m 需 ≥ 0");
+    if (!(a >= 1)) errs.push("每场次桌数 a 需 ≥ 1");
+    if (!(b >= 1)) errs.push("每天场次数 b 需 ≥ 1");
+    if (!(x >= 0)) errs.push("交手次数差上限需 ≥ 0");
+    if (n * m % 4 !== 0) errs.push("n·m=" + (n * m) + " 不能被 4 整除（总人次须能凑成 4 队同桌）");
+    if (full && n * m / 4 % (b * a) !== 0) errs.push("开启“每天打满”时，总场次须能被 b·a=" + (b * a) + " 整除");
+    if (!(maxSteps >= 1000)) errs.push("maxSteps 需 ≥ 1000");
+    if (!(restarts >= 1)) errs.push("restarts 需 ≥ 1");
+    if (!(initTemp > 0)) errs.push("initTemp 需 > 0");
+    if (!(cooling > 0 && cooling < 1)) errs.push("cooling 需在 (0,1) 之间");
+
+    let rawNames = null;
+    try { rawNames = parseNames($("names").value, n); }
+    catch (e) { errs.push(e.message); }
+
+    let seed = parseSeed($("seed").value);
+    if (seed == null && allowRandomSeed) seed = randomSeed();
+
+    if (errs.length) return { errs };
+
+    // 可行性警告（不阻断生成，仅提示）：pair 槽位不足时必然有队伍从未交手
+    const warnings = [];
+    if (n >= 4 && m > 0 && a >= 1) {
+      const totalGames = Math.floor(n * m / 4);
+      const pairSlots = totalGames * 6;
+      const pairCount = (n * (n - 1)) / 2;
+      if (pairSlots < pairCount) {
+        warnings.push("提示：该参数下交手槽位(" + pairSlots + ")少于队伍对数(" + pairCount +
+          ")，必有队伍从未交手，解将被判为不合格。建议增大 m 或减小 n。");
+      }
+    }
+
+    return {
+      params: { n, m, a, b, pairDiffMax: x, exactlyFullDays: full, maxSteps, initTemp, cooling, restarts, seed },
+      meta: { year, month, holidays, rawNames, n },
+      warnings
+    };
+  }
+
+  function liveValidate() {
+    const r = readParams(false);
+    const el = $("validateErr");
+    ["n", "m", "a", "b", "x", "maxSteps", "initTemp", "cooling", "restarts", "names"].forEach(id => $(id).classList.remove("err"));
+    if (r.errs && r.errs.length) {
+      el.textContent = "⚠ " + r.errs[0];
+      el.style.color = "var(--bad)";
+      $("genBtn").disabled = true;
+    } else if (r.warnings && r.warnings.length) {
+      el.textContent = "⚠ " + r.warnings[0];
+      el.style.color = "var(--warn)";
+      $("genBtn").disabled = false;
+    } else {
+      el.textContent = "";
+      $("genBtn").disabled = false;
+    }
+  }
+
+  // ---------- 自检 ----------
+  function selfCheck(payload, n, m, a, b) {
+    const errs = [];
+    const days = payload.result.days;
+    const teamCount = new Array(n + 1).fill(0);
+    let total = 0;
+    // 交手次数核对：必须预先把所有 n*(n-1)/2 对初始化为 0，
+    // 否则从未交手(0 次)的对不会作为 key 出现，min 会被误算成 ≥1，
+    // 与求解器(遍历全部对、含 0 次)报告的 minPair 不一致。
+    const pairCalc = {};
+    for (let i = 1; i <= n; i++) for (let j = i + 1; j <= n; j++) pairCalc[i + "_" + j] = 0;
+    for (let d = 0; d < days.length; d++) {
+      for (let s = 0; s < days[d].slots.length; s++) {
+        const games = days[d].slots[s];
+        if (games.length > a) errs.push("第 " + (d + 1) + " 天场次 " + (s + 1) + " 桌数 " + games.length + " > a=" + a);
+        const used = new Set();
+        for (let g = 0; g < games.length; g++) {
+          const gm = games[g];
+          total++;
+          if (gm.length !== 4) { errs.push("第 " + (d + 1) + " 天场次 " + (s + 1) + " 桌 " + (g + 1) + " 队伍数非 4"); continue; }
+          for (let k = 0; k < 4; k++) {
+            const t = gm[k];
+            if (t < 1 || t > n) { errs.push("队伍编号越界: " + t); continue; }
+            if (used.has(t)) errs.push("第 " + (d + 1) + " 天场次 " + (s + 1) + " 同场次重复队伍 " + t);
+            used.add(t);
+            teamCount[t]++;
+          }
+          const sorted = gm.slice().sort((p, q) => p - q);
+          for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) {
+            const key = sorted[i] + "_" + sorted[j];
+            pairCalc[key] = (pairCalc[key] || 0) + 1;
+          }
+        }
+      }
+    }
+    if (total !== payload.result.totalGames) errs.push("总场次不符: " + total + " vs " + payload.result.totalGames);
+    for (let t = 1; t <= n; t++) if (teamCount[t] !== m) errs.push("队伍 " + t + " 场数 " + teamCount[t] + " ≠ m=" + m);
+    // 交手差核对
+    let mn = Infinity, mx = -Infinity;
+    for (const k in pairCalc) { const c = pairCalc[k]; if (c < mn) mn = c; if (c > mx) mx = c; }
+    if (Object.keys(pairCalc).length > 0 && (mn !== payload.minPair || mx !== payload.maxPair))
+      errs.push("交手次数核对不一致: 计算 min=" + mn + " max=" + mx + "，求解器报告 min=" + payload.minPair + " max=" + payload.maxPair);
+    return errs;
+  }
+
+  // ---------- 渲染 ----------
+  function renderQuality(payload, n, m, a, b, x, checkErrs) {
+    const ok = payload.ok;
+    let html = "";
+    html += '<div class="spread-card ' + (ok ? "ok" : "bad") + '">';
+    html += '<div><div class="lbl">最大交手次数差 (max − min)</div><div class="big">' + payload.spread + '</div></div>';
+    html += '<div><div class="lbl">目标上限</div><div style="font-size:22px;font-weight:600">' + x + '</div></div>';
+    html += '<div><div class="lbl">状态</div><div style="font-size:16px;font-weight:600">' + (ok ? "✓ 达标" : "✗ 未达标") + '</div></div>';
+    html += '<div style="margin-left:auto"><div class="lbl">本次种子</div><div class="seed-tag">' + payload.seed + '</div></div>';
+    html += '</div>';
+
+    html += '<div class="quality" style="margin-top:12px">';
+    html += statBox("总场次", payload.result.totalGames);
+    html += statBox("天数", payload.result.minDays);
+    html += statBox("每天场次数 b", b);
+    html += statBox("每场次桌数 a", a);
+    html += statBox("交手 min", payload.minPair);
+    html += statBox("交手 max", payload.maxPair);
+    html += statBox("交手 avg", payload.avgPair.toFixed(3), true);
+    html += statBox("从未交手对组", payload.neverPlayed.length);
+    html += statBox("SA 收敛 score", payload.finalScore, true);
+    html += statBox("实际 restarts", payload.restartsUsed + "/" + (parseInt($("restarts").value, 10)));
+    html += statBox("是否早停", payload.earlyStop ? "是" : "否");
+    html += '</div>';
+
+    // 交手次数分布
+    const histKeys = Object.keys(payload.pairHist).map(Number).sort((p, q) => p - q);
+    let dist = '<div class="stat" style="grid-column:1/-1"><div class="k">交手次数分布（次数: 对数）</div><div class="dist" style="margin-top:6px">';
+    for (const c of histKeys) dist += '<span>' + c + '次: ' + payload.pairHist[c] + '对</span>';
+    dist += '</div></div>';
+    html += '<div class="quality" style="margin-top:12px">' + dist + '</div>';
+
+    if (payload.neverPlayed.length > 0) {
+      const pairs = payload.neverPlayed.slice(0, 30).map(p => p[0] + "-" + p[1]).join("、");
+      html += '<div class="stat" style="margin-top:12px"><div class="k">从未交手的对组（前 30，队号为 1..n）</div><div style="margin-top:4px;font-size:13px">' + pairs + (payload.neverPlayed.length > 30 ? " …" : "") + '</div></div>';
+    }
+    if (checkErrs && checkErrs.length) {
+      html += '<div class="banner err" style="margin-top:12px">自检发现问题（不输出 CSV）：<br>' + checkErrs.map(e => "• " + e).join("<br>") + '</div>';
+    } else {
+      html += '<div class="banner ok" style="margin-top:12px">结构自检通过：每队 ' + m + ' 场、同场次无重复、交手次数统计一致。</div>';
+    }
+    $("qualityBody").innerHTML = html;
+    $("qualityCard").style.display = "";
+  }
+  function statBox(k, v, sm) {
+    return '<div class="stat"><div class="k">' + k + '</div><div class="v' + (sm ? " sm" : "") + '">' + v + '</div></div>';
+  }
+
+  function renderPreview(payload, teamNames) {
+    const days = payload.result.days;
+    let maxTables = 0;
+    for (const d of days) for (const s of d.slots) if (s.length > maxTables) maxTables = s.length;
+    let html = "";
+    for (let d = 0; d < days.length; d++) {
+      const day = days[d];
+      html += '<div class="day-card"><div class="dh">第 ' + day.day + ' 天</div><table><tr><th>场次</th>';
+      for (let t = 0; t < maxTables; t++) {
+        const name = t < ordMap.length ? "第" + ordMap[t] + "桌" : "第" + (t + 1) + "桌";
+        html += "<th>" + name + "</th>";
+      }
+      html += "</tr>";
+      for (let s = 0; s < day.slots.length; s++) {
+        html += '<tr><td class="slot">场次' + (s + 1) + "</td>";
+        for (let t = 0; t < maxTables; t++) {
+          if (t < day.slots[s].length) {
+            const g = day.slots[s][t];
+            html += "<td>" + g.map(idx => teamNames[idx - 1]).join("<br>") + "</td>";
+          } else {
+            html += '<td class="muted">—</td>';
+          }
+        }
+        html += "</tr>";
+      }
+      html += "</table></div>";
+    }
+    $("preview").innerHTML = html;
+    $("previewCard").style.display = "";
+  }
+
+  // ---------- Worker 管理 ----------
+  let worker = null;
+  let lastPayload = null;
+  let lastMeta = null;
+
+  function createWorker() {
+    const code = $("worker-src").textContent;
+    const blob = new Blob([code], { type: "application/javascript" });
+    return new Worker(URL.createObjectURL(blob));
+  }
+
+  function run(forcedSeed) {
+    liveValidate();
+    if ($("genBtn").disabled) return;
+    const r = readParams(true);
+    if (r.errs) return;
+    const { params, meta } = r;
+    if (forcedSeed != null) { params.seed = forcedSeed >>> 0; $("seed").value = params.seed; }
+    else { $("seed").value = params.seed; } // 显示本次随机种子
+
+    $("bannerHost").innerHTML = "";
+    $("qualityCard").style.display = "none";
+    $("previewCard").style.display = "none";
+    $("dlBtn").disabled = true;
+    $("regenBtn").disabled = true;
+    $("genBtn").disabled = true;
+    $("cancelBtn").disabled = false;
+    $("progress").classList.add("show");
+    $("progressBar").style.width = "0%";
+    $("progressLabel").textContent = "求解中…";
+
+    if (worker) worker.terminate();
+    worker = createWorker();
+    worker.onmessage = (e) => {
+      const msg = e.data;
+      if (msg.type === "progress") {
+        $("progressBar").style.width = (msg.ratio * 100).toFixed(1) + "%";
+        $("progressLabel").textContent = "求解中… " + (msg.ratio * 100).toFixed(0) + "%（当前最大交手次数差 " + msg.spread + "）";
+      } else if (msg.type === "done") {
+        finishRun(msg.payload, meta, params);
+      } else if (msg.type === "error") {
+        $("progress").classList.remove("show");
+        $("progressLabel").textContent = "";
+        $("bannerHost").innerHTML = '<div class="banner err">求解出错：' + escapeHtml(msg.message) + "</div>";
+        resetButtons();
+      } else if (msg.type === "cancelled") {
+        $("progress").classList.remove("show");
+        $("progressLabel").textContent = "已取消。";
+        resetButtons();
+      }
+    };
+    worker.postMessage({ type: "run", params });
+  }
+
+  function finishRun(payload, meta, params) {
+    $("progress").classList.remove("show");
+    $("progressLabel").textContent = "";
+    const teamNames = buildTeamNames(meta.n, meta.rawNames);
+    const checkErrs = selfCheck(payload, meta.n, params.m, params.a, params.b);
+
+    renderQuality(payload, meta.n, params.m, params.a, params.b, params.pairDiffMax, checkErrs);
+    renderPreview(payload, teamNames);
+
+    if (!payload.ok) {
+      let msg;
+      if (payload.neverPlayed.length > 0) {
+        // 主因是存在从未交手的对组（0 次对）：放宽 x 上限无效，需让队伍有机会碰面
+        msg = "未找到合格解：存在 " + payload.neverPlayed.length + " 对从未交手的队伍" +
+          "（最大交手次数差 " + payload.spread + "，目标 ≤ " + params.pairDiffMax + "）。" +
+          "该参数下队伍碰面机会不足，放宽上限无法解决。可尝试：增大每队场数 m、减小队伍数 n，" +
+          "或增大 maxSteps/restarts。仍可下载当前最优解。";
+      } else {
+        msg = "未找到满足“最大交手次数差 ≤ " + params.pairDiffMax + "”的解（当前差值 " +
+          payload.spread + "）。可尝试：放宽上限、增大 maxSteps/restarts，或调整 n/m/a/b。" +
+          "仍可下载当前最优解。";
+      }
+      $("bannerHost").innerHTML = '<div class="banner warn">' + msg + "</div>";
+    }
+
+    lastPayload = payload;
+    lastMeta = meta;
+    lastParams = params;
+    $("dlBtn").disabled = checkErrs.length > 0;
+    $("regenBtn").disabled = false;
+    resetButtons();
+  }
+
+  function resetButtons() {
+    $("genBtn").disabled = false;
+    $("cancelBtn").disabled = true;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  let lastParams = null;
+
+  // ---------- 事件绑定 ----------
+  $("genBtn").addEventListener("click", () => run());
+  $("regenBtn").addEventListener("click", () => {
+    // 换新随机种子再跑
+    $("seed").value = "";
+    run();
+  });
+  $("cancelBtn").addEventListener("click", () => {
+    if (worker) worker.postMessage({ type: "cancel" });
+  });
+  $("dlBtn").addEventListener("click", () => {
+    if (!lastPayload) return;
+    const meta = lastMeta, params = lastParams;
+    const teamNames = buildTeamNames(meta.n, meta.rawNames);
+    let maxTables = 0;
+    for (const d of lastPayload.result.days) for (const s of d.slots) if (s.length > maxTables) maxTables = s.length;
+    let dates;
+    try { dates = generateDates(lastPayload.result.minDays, meta.year, meta.month, meta.holidays); }
+    catch (e) { $("bannerHost").innerHTML = '<div class="banner err">日期生成失败：' + escapeHtml(e.message) + "</div>"; return; }
+    const csv = buildCsv(lastPayload.result.days, teamNames, dates, maxTables);
+    const fname = "schedule_seed" + lastPayload.seed + ".csv";
+    downloadCsv(csv, fname);
+  });
+
+  ["n", "m", "a", "b", "x", "maxSteps", "initTemp", "cooling", "restarts", "names", "full"].forEach(id => {
+    $(id).addEventListener("input", liveValidate);
+    $(id).addEventListener("change", liveValidate);
+  });
+
+  liveValidate();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+# ===== Python =====
+# 虚拟环境
+.venv/
+venv/
+env/
+ENV/
+
+# 字节码与缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ===== Node.js =====
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===== 编辑器 / IDE =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ===== 项目输出（生成物，不纳入版本控制）=====
+# 求解器导出的赛程 CSV
+schedule.csv
+schedule_*.csv
+*_schedule.csv
+grouping_from_html.csv
+
+# 临时/测试产物
+_test*.js
+_browser_download.csv
+_check_*.csv
+
+# ===== 其他 =====
+*.log
+tmp/
+.tmp/
